@@ -1,8 +1,15 @@
 <?php
 
 /**
- * 重定向到URL
+ * 跳转链接
+ * 
+ * @param string $end 自定义后缀
+ * @param string $password 密码
+ * @param string $type 返回类型
+ * 
+ * @return json
  */
+
 require 'Tool.php';
 require '../config.php';
 
@@ -34,19 +41,32 @@ $Tool->sqlError($result);
 
 // 查找URL
 $now_time = time();
-$sql = "SELECT * FROM `$table` WHERE `end` = '$end' AND ((`create_time` + `guoqi` * 24 * 3600 > $now_time) OR (`guoqi` = 0))";
-$result = mysqli_query($conn, $sql);
+$sql = "SELECT * FROM `$table` WHERE `end` = ? AND ((`create_time` + `guoqi` * 24 * 3600 > ?) OR (`guoqi` = 0))";
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, 'si', $end, $now_time);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 $Tool->sqlError($result);
-if (mysqli_num_rows($result) == 0) {
-    $Tool->error(904, '链接不存在或失效');
+
+if (mysqli_num_rows($result) === 0) {
+    $Tool->error(904, '链接不存在或已失效');
+    exit;
 }
+
 $row = mysqli_fetch_assoc($result);
-if ($row['password'] != $password) {
+
+if ($row['password'] !== $password) {
     $Tool->error(901, '密码错误');
+    exit;
 }
-if ($type == 'cdx') {
+
+if ($type === 'cdx') {
     header('Location: ' . $row['url']);
-} elseif ($type == 'json') {
+    exit;
+} elseif ($type === 'json') {
     unset($row['id']);
     $Tool->success('获取成功', $row);
+    exit;
 }
+
+$Tool->error(905, '无效的请求类型');

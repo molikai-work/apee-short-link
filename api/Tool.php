@@ -6,8 +6,7 @@
 
 namespace Tool;
 
-class Tool
-{
+class Tool {
 
     /**
      * 获取关联数组中指定键名的值
@@ -16,8 +15,7 @@ class Tool
      * @param mixed $default 当键名未定义时的默认返回值
      * @return mixed 获取结果
      */
-    function defalutGetData($array, $key, $default)
-    {
+    function defalutGetData($array, $key, $default) {
         $v = isset($array[$key]) && $array[$key] != '' ? $array[$key] : $default;
         return addslashes($v);
     }
@@ -25,8 +23,7 @@ class Tool
     /**
      * 生成一个指定长度的随机字符串
      */
-    function randId($length)
-    {
+    function randId($length) {
         $v = substr(str_shuffle(md5(str_shuffle(time()))), 0, $length);
         for ($x = 0; $x < $length; $x++) {
             if (rand(0, 1)) {
@@ -50,8 +47,7 @@ class Tool
      * | 905    | 类型或格式错误 |
      * | 906    | 资源获取失败   |
      */
-    function error($code, $msg)
-    {
+    function error($code, $msg) {
         header('Content-type: application/json; charset=utf-8');
         echo json_encode(array(
             'code' => $code,
@@ -65,8 +61,7 @@ class Tool
      * @param mysqli_result $result 查询结果
      * @return bool
      */
-    function sqlError($result)
-    {
+    function sqlError($result) {
         header('Content-type: application/json; charset=utf-8');
         if (!$result) {
             $this->error(903, '数据库错误');
@@ -80,8 +75,7 @@ class Tool
      * @param string $msg 成功信息
      * @param mixed $data 输出数据
      */
-    function success($msg, $data)
-    {
+    function success($msg, $data) {
         header('Content-type: application/json; charset=utf-8');
         echo json_encode(array(
             'code' => 200,
@@ -97,8 +91,7 @@ class Tool
      * @param array $array 待加密数组
      * @return string 加密结果
      */
-    function encodeStr($array)
-    {
+    function encodeStr($array) {
         $key_val = '';
         for ($x = 0; $x < count($array); $x++) {
             $key_val .= base64_encode(urlencode($array[$x]));

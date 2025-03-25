@@ -4,7 +4,6 @@
  * 跳转到分享页面
  */
 
-
 require 'Tool.php';
 
 use Tool\Tool;

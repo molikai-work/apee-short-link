@@ -1,8 +1,19 @@
 <?php
 
 /**
- * 增加网址记录
+ * 生成短链接
+ * 
+ * @param string $url 长链接
+ * @param string $password 密码
+ * @param string $desc 描述
+ * @param int $guoqi 有效天数
+ * @param string $key_time 时间戳
+ * @param string $key_val 验证码
+ * @param string $endd 自定义后缀
+ * 
+ * @return json
  */
+
 require '../config.php';
 require 'Tool.php';
 
@@ -11,19 +22,25 @@ use Tool\Tool;
 $Tool = new Tool();
 header('Content-type: application/json; charset=utf-8');
 sleep(1);
+
+// 获取请求数据
 $url = $Tool->defalutGetData($_POST, 'a', '');
 $password = $Tool->defalutGetData($_POST, 'b', '');
 $desc = $Tool->defalutGetData($_POST, 'c', '');
 $guoqi = (int)$Tool->defalutGetData($_POST, 'd', 0);
 $key_time = $Tool->defalutGetData($_POST, 'e', '');
-$key_val = $Tool->defalutGetData($_POST, 'f', ''); // 双层base64
+$key_val = $Tool->defalutGetData($_POST, 'f', '');
+$endd = $Tool->defalutGetData($_POST, 'g', '');
 
-if ($Tool->encodeStr([$url, $password, $guoqi, $key_time]) != $key_val) {
+// 数据验证
+if ($Tool->encodeStr([$url, $password, $guoqi, $key_time]) !== $key_val) {
     $Tool->error(901, '验证出错');
-    die();
-} elseif (time() * 1000 - $key_time > 10000) {
+    exit;
+}
+
+if (time() * 1000 - $key_time > 10000) {
     $Tool->error(904, '请求过期');
-    die();
+    exit;
 }
 
 $create_time = time();
@@ -46,67 +63,78 @@ $sql = "CREATE TABLE IF NOT EXISTS `$table` (
 $result = mysqli_query($conn, $sql);
 $Tool->sqlError($result);
 
-$endd = $Tool->defalutGetData($_POST, 'g', '');
-$end = $endd ? $endd : endIdGood();
-
-// 校验参数
-if (!parse_url($url) && strlen($url) < 2084) {
+// 数据校验
+if (!filter_var($url, FILTER_VALIDATE_URL) || strlen($url) > 2084) {
     $Tool->error(905, 'URL格式错误');
-} elseif (!preg_match('/^\w{0,20}$/', $password)) {
+}
+
+if (!preg_match('/^\w{0,20}$/', $password)) {
     $Tool->error(905, '密码格式错误，要求1-20位数字、字母、下划线');
-} elseif (mb_strlen($desc) > 200) {
+}
+
+if (mb_strlen($desc) > 200) {
     $Tool->error(905, '描述文本长度不能超过200');
-} elseif ($guoqi < 0 || $guoqi > 10000) {
-    $Tool->error(905, '有效天数必须是1-10000的整数');
-} elseif ($end && !preg_match('/^\w{6,20}$/', $end)) {
+}
+
+if ($guoqi < 0 || $guoqi > 365) {
+    $Tool->error(905, '有效天数必须是1-365的整数');
+}
+
+if ($endd && !preg_match('/^\w{6,20}$/', $endd)) {
     $Tool->error(905, '自定义后缀格式错误，要求6-20位数字、字母、下划线');
 }
 
-// 没有密码和时间限制时，查询记录是否已经存在
+// 生成后缀
+function generateEndId() {
+    global $conn, $table, $Tool;
+    do {
+        $end = $Tool->randId(6);
+        $sql = "SELECT `end` FROM `$table` WHERE `end` = '$end';";
+        $result = mysqli_query($conn, $sql);
+    } while (mysqli_num_rows($result) > 0);
+    return $end;
+}
+
+$end = $endd ?: generateEndId();
+
+// 查询重复记录
 if (!$password && !$guoqi && !$endd) {
-    $sql = "SELECT * FROM `$table` WHERE `url` = '$url' AND `desc` = '$desc' AND `password` = '';";
-    $result = mysqli_query($conn, $sql);
-    $Tool->sqlError($result);
+    $sql = "SELECT * FROM `$table` WHERE `url` = ? AND `desc` = ? AND `password` = '';";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, 'ss', $url, $desc);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
     if (mysqli_num_rows($result) > 0) {
-        // 存在记录，直接返回
         $row = mysqli_fetch_assoc($result);
         unset($row['id']);
         $Tool->success('生成成功', $row);
     }
 }
 
-// 删除数据表中所有过期的记录
-// $sql = "DELETE FROM `$table` WHERE create_time + guoqi * 24 * 3600 < $create_time";
-// mysqli_query($conn, $sql);
+// 检查后缀是否重复
+$sql = "SELECT `end` FROM `$table` WHERE `end` = ?;";
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, 's', $end);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 
-$sql = "SELECT `end` FROM `$table` WHERE `end` = '$end';";
-$result = mysqli_query($conn, $sql);
 if (mysqli_num_rows($result) > 0) {
     $Tool->error(902, '后缀已存在，请换一个试试');
 }
 
-// 递归查询后缀是否存在，存在则重新生成
-function endIdGood()
-{
-    global $conn, $table, $Tool;
-    $end = $Tool->randId(6);
-    $sql = "SELECT `end` FROM `$table` WHERE `end` = '$end';";
-    $result = mysqli_query($conn, $sql);
-    if (mysqli_num_rows($result) == 0) {
-        return $end;
-    } else {
-        endIdGood();
-    }
-}
 // 插入记录
-$sql = "INSERT INTO `$table` (`url`, `password`, `desc`, `guoqi`, `end`, `create_time`) VALUES ('$url', '$password', '$desc', $guoqi, '$end', $create_time);";
-$result = mysqli_query($conn, $sql);
+$sql = "INSERT INTO `$table` (`url`, `password`, `desc`, `guoqi`, `end`, `create_time`) VALUES (?, ?, ?, ?, ?, ?);";
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, 'sssisi', $url, $password, $desc, $guoqi, $end, $create_time);
+$result = mysqli_stmt_execute($stmt);
+
 $Tool->sqlError($result);
-$Tool->success('生成成功', array(
+$Tool->success('生成成功', [
     'url' => $url,
     'password' => $password,
     'desc' => $desc,
     'guoqi' => $guoqi,
     'end' => $end,
     'create_time' => $create_time,
-));
+]);
