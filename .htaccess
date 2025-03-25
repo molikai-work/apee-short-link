@@ -1,0 +1,4 @@
+RewriteEngine On
+
+RewriteRule ^s/(\w+)/?$ /api/go_share.php?end=$1 [L]
+RewriteRule ^(\w+)/?(\w*)$ /api/go_url.php?end=$1&password=$2 [L]
