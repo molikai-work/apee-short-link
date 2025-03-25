@@ -34,7 +34,7 @@ function createWork() {
     } else if (desc.length > 200) {
         $('#input-desc').addClass('is-invalid').focus()
         return
-    } else if (guoqi < 0 || guoqi > 10000) {
+    } else if (guoqi < 0 || guoqi > 365) {
         $('#input-day').addClass('is-invalid').focus()
         return
     } else if (end && end.search(/^\w{6,20}$/) == -1) {
