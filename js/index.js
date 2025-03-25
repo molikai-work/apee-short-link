@@ -24,8 +24,8 @@ function validateInput(url, password, desc, guoqi, end) {
         return ['input-desc', 'Description cannot exceed 200 characters'];
     }
 
-    if (guoqi < 0 || guoqi > 10000) {
-        return ['input-day', 'Days must be between 0 and 10000'];
+    if (guoqi < 0 || guoqi > 365) {
+        return ['input-day', 'Days must be between 0 and 365'];
     }
 
     if (end && !/^\w{6,20}$/.test(end)) {
