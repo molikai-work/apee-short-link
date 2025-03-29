@@ -1,6 +1,9 @@
 # APEE 短网址平台
 > 轻量简约的在线短网址生成平台
 
+> 自分叉后已修改，可能不合适于您使用，因为修改的偏好是基于个人的，  
+> 请关注原项目 [iuroc/apee-short-link](https://github.com/iuroc/apee-short-link)
+
 ## 项目信息
 - 作者：https://github.com/oyps
 - 主页：https://apee.top
